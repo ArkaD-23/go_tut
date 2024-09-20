@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 type Server struct {
 	listenAddr string
@@ -26,6 +29,33 @@ func (s *Server) Start() error {
 	<-s.quitch
 
 	return nil
+}
+
+func (s *Server) acceptLoop() {
+	for {
+		conn, err := s.ln.Accept()
+		if err != nil {
+			fmt.Println("loop error:", err)
+			continue
+		}
+		go s.readLoop(conn)
+	}
+}
+
+func (s *Server) readLoop(conn net.Conn) {
+	defer conn.Close()
+	buff := make([]byte, 2048)
+
+	for {
+		n, err := conn.Read(buff)
+		if err != nil {
+			fmt.Println("read error:", err)
+			continue
+		}
+
+		msg := buff[:n]
+		fmt.Println("Message:", string(msg))
+	}
 }
 
 func main() {
