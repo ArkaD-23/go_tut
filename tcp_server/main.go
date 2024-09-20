@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -26,6 +27,8 @@ func (s *Server) Start() error {
 	defer ln.Close()
 	s.ln = ln
 
+	go s.acceptLoop()
+
 	<-s.quitch
 
 	return nil
@@ -38,6 +41,9 @@ func (s *Server) acceptLoop() {
 			fmt.Println("loop error:", err)
 			continue
 		}
+
+		fmt.Println("New connection to the server:", conn.RemoteAddr())
+
 		go s.readLoop(conn)
 	}
 }
@@ -59,5 +65,6 @@ func (s *Server) readLoop(conn net.Conn) {
 }
 
 func main() {
-
+	server := NewServer(":3000")
+	log.Fatal(server.Start())
 }
