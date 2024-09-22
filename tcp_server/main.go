@@ -6,16 +6,23 @@ import (
 	"net"
 )
 
+type Message struct {
+	from    string
+	payload []byte
+}
+
 type Server struct {
 	listenAddr string
 	ln         net.Listener
 	quitch     chan struct{}
+	msgch      chan Message
 }
 
 func NewServer(listenAddr string) *Server {
 	return &Server{
 		listenAddr: listenAddr,
 		quitch:     make(chan struct{}),
+		msgch:      make(chan Message, 10),
 	}
 }
 
@@ -30,6 +37,7 @@ func (s *Server) Start() error {
 	go s.acceptLoop()
 
 	<-s.quitch
+	close(s.msgch)
 
 	return nil
 }
@@ -59,12 +67,20 @@ func (s *Server) readLoop(conn net.Conn) {
 			continue
 		}
 
-		msg := buff[:n]
-		fmt.Println("Message:", string(msg))
+		s.msgch <- Message{
+			from:    conn.RemoteAddr().String(),
+			payload: buff[:n],
+		}
+		conn.Write([]byte("Thank you for your message !"))
 	}
 }
 
 func main() {
 	server := NewServer(":3000")
+	go func() {
+		for msg := range server.msgch {
+			fmt.Printf("Received message from (%s) : %s\n", msg.from, string(msg.payload))
+		}
+	}()
 	log.Fatal(server.Start())
 }
