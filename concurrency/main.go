@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Message struct {
 	from    string
@@ -8,18 +11,28 @@ type Message struct {
 }
 
 type Server struct {
-	msgch chan Message
+	msgch  chan Message
+	quitch chan struct{}
 }
 
 func (s *Server) startAndListen() {
+	// you can name your for loop
+running:
 	for {
-		msg := <-s.msgch
-		fmt.Printf("Message received from %s : %s\n", msg.from, msg.payload)
+		select {
+		case msg := <-s.msgch:
+			fmt.Printf("Message received from %s : %s\n", msg.from, msg.payload)
+		case <-s.quitch:
+			fmt.Println("The server is doing a graceful shutdown......")
+			break running
+		default:
+		}
 	}
+	fmt.Println("The server is shut down......")
 }
 
 func (s *Server) sendMessage(payload string) {
-	fmt.Println("Sending message......")
+	//fmt.Println("Sending message......")
 	msg := Message{
 		from:    "John Doe",
 		payload: payload,
@@ -27,12 +40,25 @@ func (s *Server) sendMessage(payload string) {
 	s.msgch <- msg
 }
 
+func serverShut(quitch chan struct{}) {
+	close(quitch)
+}
+
 func main() {
 	server := &Server{
-		msgch: make(chan Message),
+		msgch:  make(chan Message),
+		quitch: make(chan struct{}),
 	}
 	go server.startAndListen()
-	server.sendMessage("Hello from Go!")
+	go func() {
+		time.Sleep(2 * time.Second)
+		server.sendMessage("Hello from Go!")
+	}()
+
+	go func() {
+		time.Sleep(4 * time.Second)
+		serverShut(server.quitch)
+	}()
 }
 
 // Synchronous and Asynchronous staff
