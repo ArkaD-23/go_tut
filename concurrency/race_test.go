@@ -1,18 +1,19 @@
 package main
 
 import (
-	"sync"
+	"sync/atomic"
 	"testing"
 )
 
 func TestDataRaceConditions(t *testing.T) {
 	var state int32
-	var mu sync.RWMutex
+	//var mu sync.RWMutex
 	for i := 0; i < 10; i++ {
 		go func(i int) {
-			mu.Lock()
-			state += int32(i)
-			mu.Unlock()
+			// mu.Lock()
+			// state += int32(i)
+			// mu.Unlock()
+			atomic.AddInt32(&state, int32(i)) //atomic value
 		}(i)
 	}
 }
